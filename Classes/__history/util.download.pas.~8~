@@ -1,0 +1,110 @@
+unit util.download;
+
+interface
+
+uses
+  Classes, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdHTTP,
+  IdSSLOpenSSL;
+
+{$M+}
+
+type
+  TIdHTTPProgress = class(TIdHTTP)
+  private
+    FProgress: Integer;
+    FBytesToTransfer: Int64;
+    FOnChange: TNotifyEvent;
+    IOHndl: TIdSSLIOHandlerSocketOpenSSL;
+    procedure HTTPWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
+    procedure HTTPWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
+    procedure HTTPWorkEnd(Sender: TObject; AWorkMode: TWorkMode);
+    procedure SetProgress(const Value: Integer);
+    procedure SetOnChange(const Value: TNotifyEvent);
+  public
+    constructor Create(AOwner: TComponent);
+    procedure DownloadFile(const aFileUrl: string; const aDestinationFile: String; ADestStream: TFileStream);
+  published
+    property Progress: Integer read FProgress write SetProgress;
+    property BytesToTransfer: Int64 read FBytesToTransfer;
+    property OnChange: TNotifyEvent read FOnChange write SetOnChange;
+  end;
+
+implementation
+
+uses
+  Sysutils;
+
+{ TIdHTTPProgress }
+
+constructor TIdHTTPProgress.Create(AOwner: TComponent);
+begin
+  inherited;
+  IOHndl := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
+  Request.BasicAuthentication := True;
+  Request.Accept := 'text/html, */*';
+//  Request.UserAgent := 'Mozilla/5.0 (compatible; JD Thread Demo)';
+  Request.ContentType := 'application/x-www-form-urlencoded';
+  Request.UserAgent := 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; Acoo Browser; GTB5; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; Maxthon; InfoPath.1; .NET CLR 3.5.30729; .NET CLR 3.0.30618)';
+  HandleRedirects := True;
+  IOHandler := IOHndl;
+  ReadTimeout := 30000;
+  IOHndl.SSLOptions.SSLVersions := [sslvTLSv1, sslvTLSv1_1, sslvTLSv1_2];
+
+  {$IFDEF FPC}
+  OnWork := @HTTPWork;
+  OnWorkBegin := @HTTPWorkBegin;
+  OnWorkEnd := @HTTPWorkEnd;
+  {$ELSE}
+  OnWork := HTTPWork;
+  OnWorkBegin := HTTPWorkBegin;
+  OnWorkEnd := HTTPWorkEnd;
+  {$ENDIF}
+end;
+
+procedure TIdHTTPProgress.DownloadFile(const aFileUrl: string; const aDestinationFile: String; ADestStream: TFileStream);
+var
+  aPath: String;
+begin
+  Progress := 0;
+  FBytesToTransfer := 0;
+  aPath := ExtractFilePath(aDestinationFile);
+  if aPath <> '' then
+    ForceDirectories(aPath);
+
+  Get(aFileUrl, ADestStream);
+
+end;
+
+procedure TIdHTTPProgress.HTTPWork(ASender: TObject; AWorkMode: TWorkMode; AWorkCount: Int64);
+begin
+  if BytesToTransfer = 0 then // No Update File
+    Exit;
+
+  Progress := Round((AWorkCount / BytesToTransfer) * 100);
+end;
+
+procedure TIdHTTPProgress.HTTPWorkBegin(ASender: TObject; AWorkMode: TWorkMode; AWorkCountMax: Int64);
+begin
+  FBytesToTransfer := AWorkCountMax;
+end;
+
+procedure TIdHTTPProgress.HTTPWorkEnd(Sender: TObject; AWorkMode: TWorkMode);
+begin
+  FBytesToTransfer := 0;
+  Progress := 100;
+end;
+
+procedure TIdHTTPProgress.SetOnChange(const Value: TNotifyEvent);
+begin
+  FOnChange := Value;
+end;
+
+procedure TIdHTTPProgress.SetProgress(const Value: Integer);
+begin
+  FProgress := Value;
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+end;
+
+end.
+

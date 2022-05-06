@@ -1,0 +1,15 @@
+program Downloads;
+
+uses
+  Vcl.Forms,
+  u_admPrincipal in 'u_admPrincipal.pas' {admPrincipal},
+  RegrasNegocio in '..\Classes\RegrasNegocio.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TadmPrincipal, admPrincipal);
+  Application.Run;
+end.

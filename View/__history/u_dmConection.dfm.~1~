@@ -1,0 +1,13 @@
+object dmConection: TdmConection
+  Height = 480
+  Width = 640
+  object Connection: TFDConnection
+    Params.Strings = (
+      'Database=E:\ACS\Solucao-glp\Mobile\fontes\Dados\GLP.db'
+      'OpenMode=ReadWrite'
+      'DriverID=SQLite')
+    LoginPrompt = False
+    Left = 24
+    Top = 24
+  end
+end

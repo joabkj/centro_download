@@ -1,0 +1,27 @@
+unit u_frmHistorico;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Data.DB, Vcl.Grids,
+  Vcl.DBGrids;
+
+type
+  TfrmHistorico = class(TForm)
+    Panel1: TPanel;
+    DBGrid1: TDBGrid;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmHistorico: TfrmHistorico;
+
+implementation
+
+{$R *.dfm}
+
+end.
