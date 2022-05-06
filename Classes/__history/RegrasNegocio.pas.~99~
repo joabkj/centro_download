@@ -96,8 +96,8 @@ type
     FId             : Integer;
     FPausar         : Boolean;
     Http            : TIdHTTP;
-    FConcluido      : int64;
-    FTamanhoArquivo : Int64;
+    FConcluido      : Integer;
+    FTamanhoArquivo : Integer;
     fFileStream     : TFileStream;
     function  DownloadFileThread(const OnFinished: TDownloadDoneEvent): Boolean;
     function  GravaDownloadDB: Boolean;
@@ -112,7 +112,6 @@ type
     procedure WorkEnd(ASender: TObject; AWorkMode: TWorkMode);
     procedure IdHTTPWork(ASender: TObject; AWorkMode: TWorkMode;
       AWorkCount: Int64);
-    function RetornaFluxo(AValorAtual: real): string;
     procedure IdHTTPWorkBegin(ASender: TObject; AWorkMode: TWorkMode;
       AWorkCountMax: Int64);
     procedure ControleBotoes;
@@ -127,7 +126,7 @@ type
     property   Executando: Boolean read FExecutando write SetExecutando;
     property   ID : Integer  read FID write SetID;
     property   PAUSAR : Boolean  read FPausar write SetPausar;
-    function   Baixar: Boolean;
+    procedure   Baixar;
   end;
 
   TConfirmacao = class(TObserver)
@@ -222,14 +221,9 @@ begin
   inherited;
 end;
 
-function TDownload.Baixar: Boolean;
+procedure TDownload.Baixar;
 begin
-  try
-    DownloadFileThread(DownloadFinished);
-    Result:= True;
-  except
-    Result:= False;
-  end;
+  DownloadFileThread(DownloadFinished);
 end;
 
 
@@ -255,17 +249,12 @@ begin
   componente.ProgressBar.Position := componente.ProgressBar.Max;
 end;
 
-function TDownload.RetornaFluxo(AValorAtual: real): string;
-begin
-  Result := FormatFloat('0.000 KBs',(AValorAtual / 1024) / 1024);
-end;
-
 procedure TDownload.IdHTTPWork(ASender: TObject; AWorkMode: TWorkMode;
   AWorkCount: Int64);
 begin
    componente.ProgressBar.Position  := Trunc((FConcluido/FTamanhoArquivo)*101);
    componente.LabelDadosDown.Caption:= inttostr(trunc(FConcluido/1024))+' de '+inttostr(trunc(FTamanhoArquivo/1024))+' kb';
-   componente.LabelDadosPorc.Caption:= ConvertePorcentagem(componente.ProgressBar.Max, FConcluido);
+   componente.LabelDadosPorc.Caption:= ConvertePorcentagem(componente.ProgressBar.Max, trunc(FConcluido/1024));
    componente.LabelDadosDown.Refresh;
    componente.LabelDadosPorc.Refresh;
 end;
@@ -273,7 +262,7 @@ end;
 procedure TDownload.IdHTTPWorkBegin(ASender: TObject; AWorkMode: TWorkMode;
   AWorkCountMax: Int64);
 begin
-  componente.ProgressBar.Max := FTamanhoArquivo;
+  componente.ProgressBar.Max := trunc(FTamanhoArquivo/1024);
 end;
 
 procedure TDownload.img_exibirClick(Sender: TObject);
@@ -303,7 +292,6 @@ function TDownload.DownloadFileThread(const OnFinished: TDownloadDoneEvent): Boo
 var
   Success: Boolean;
 begin
-  FConcluido:= 0;
   TThread.CreateAnonymousThread(
     procedure
   var
@@ -342,16 +330,24 @@ begin
                if FPausar then
                  Http.Free;
 
-             if not FileExists(DadosDownloads.PathSave) then begin
+             if not FileExists(DadosDownloads.PathSave) then
+             begin
                fFileStream := TFileStream.Create(DadosDownloads.PathSave, fmCreate);
+               FConcluido  := fFileStream.Size;
              end
              else
              begin
-               fFileStream := TFileStream.Create(DadosDownloads.PathSave, fmOpenReadWrite);
-               terminado   := fFileStream.Size >= FTamanhoArquivo; //se quantidade baixada = tam do arquivo do serv
-               FConcluido  := fFileStream.Size;
-               if not terminado then
-                 fFileStream.Seek(Max(0, fFileStream.Size-4096), soFromBeginning);
+               try
+                 fFileStream := TFileStream.Create(DadosDownloads.PathSave, fmOpenReadWrite);
+                 terminado   := fFileStream.Size >= FTamanhoArquivo; //se quantidade baixada = tam do arquivo do serv
+                 FConcluido  := fFileStream.Size;
+                 if not terminado then
+                   fFileStream.Seek(Max(0, fFileStream.Size-4096), soFromBeginning);
+               except
+                 Success:= False;
+                 Http.Disconnect;
+                 exit;
+               end;
              end;
              try
                quant_baixada_arq  :=fFileStream.Size + 50000;//Acrescido em 50kb para garantir chegar ao fim
@@ -360,6 +356,7 @@ begin
             end
             else begin
               Http.Request.Range := IntToStr(fFileStream.Position) + '-';
+              FConcluido:= FTamanhoArquivo;
               terminado:=true;
             end;
               Http.Get(DadosDownloads.URL, fFileStream);
@@ -414,7 +411,7 @@ begin
     admPrincipal.ExecutaSql.Close;
     admPrincipal.ExecutaSql.SQL.Clear;
     admPrincipal.ExecutaSql.SQL.add(' UPDATE LOGDOWNLOAD  SET DATAFIM = '+  QuotedStr(FormatDateTime('dd/mm/yyyy', now)));
-    admPrincipal.ExecutaSql.SQL.add(' WHERE CODIGO = '+ IntToStr(componente.Codigo));
+    admPrincipal.ExecutaSql.SQL.add(' WHERE CODIGO = '+ IntToStr(Componente.Codigo));
     admPrincipal.ExecutaSql.ExecSQL;
     Result:= true;
   except

@@ -339,7 +339,7 @@ begin
              begin
                try
                  fFileStream := TFileStream.Create(DadosDownloads.PathSave, fmOpenReadWrite);
-                 terminado   := fFileStream.Size >= FTamanhoArquivo; //se quantidade baixada = tam do arquivo do serv
+                 terminado   := fFileStream.Size >= FTamanhoArquivo;
                  FConcluido  := fFileStream.Size;
                  if not terminado then
                    fFileStream.Seek(Max(0, fFileStream.Size-4096), soFromBeginning);
@@ -350,7 +350,7 @@ begin
                end;
              end;
              try
-               quant_baixada_arq  :=fFileStream.Size + 50000;//Acrescido em 50kb para garantir chegar ao fim
+               quant_baixada_arq  :=fFileStream.Size + 50000;
                if quant_baixada_arq < FTamanhoArquivo then begin
                  Http.Request.Range := IntToStr(fFileStream.Position) + '-'+  IntToStr(FConcluido);
             end
